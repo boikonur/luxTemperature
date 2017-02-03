@@ -4,6 +4,10 @@
    - I2C-Sensor-Lib (iLib)
    - FastLed
 
+  Used Hardware:
+
+  - Pro Mini Atmega328 3.3V 8M 
+    I2C - A4 (SDA), A5 (SCL)
 */
 
 #include <Wire.h>
