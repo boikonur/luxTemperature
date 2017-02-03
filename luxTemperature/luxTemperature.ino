@@ -1,26 +1,20 @@
 /*
-   Required libraries
-   Adafruit_BMP280
-   FastLed
+   Required libraries:
+   
+   - I2C-Sensor-Lib (iLib)
+   - FastLed
 
 */
 
 #include <Wire.h>
-#include <SPI.h>
-//#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP280.h>
+#include "i2c.h"
+#include "i2c_BMP280.h"
+BMP280 bmp280;
+
 
 #include "FastLED.h"
 
 
-#define BMP_SCK 13
-#define BMP_MISO 12
-#define BMP_MOSI 11
-#define BMP_CS 10
-
-Adafruit_BMP280 bme; // I2C
-//Adafruit_BMP280 bme(BMP_CS); // hardware SPI
-//Adafruit_BMP280 bme(BMP_CS, BMP_MOSI, BMP_MISO,  BMP_SCK);
 
 FASTLED_USING_NAMESPACE
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001000)
@@ -46,12 +40,19 @@ void setup() {
   FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
 
-  if (!bme.begin()) {
-    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
-    while (1);
+  Serial.print("Probe BMP280: ");
+  if (bmp280.initialize()) Serial.println("Sensor found");
+  else
+  {
+    Serial.println("Sensor missing");
+    while (1) {}
   }
 
+  // onetime-measure:
+  bmp280.setEnabled(0);
+  bmp280.triggerMeasurement();
 }
+
 
 void loop() {
   bmpTest();
@@ -72,19 +73,29 @@ void loop() {
 
 void bmpTest() {
 
-  Serial.print("Temperature = ");
-  Serial.print(bme.readTemperature());
-  Serial.println(" *C");
+  bmp280.awaitMeasurement();
 
-  Serial.print("Pressure = ");
-  Serial.print(bme.readPressure());
-  Serial.println(" Pa");
+  float temperature;
+  bmp280.getTemperature(temperature);
 
-  Serial.print("Approx altitude = ");
-  Serial.print(bme.readAltitude(1013.25)); // this should be adjusted to your local forcase
-  Serial.println(" m");
+  float pascal;
+  bmp280.getPressure(pascal);
 
-  Serial.println();
+  static float meters, metersold;
+  bmp280.getAltitude(meters);
+  metersold = (metersold * 10 + meters) / 11;
+
+  bmp280.triggerMeasurement();
+
+  Serial.print(" HeightPT1: ");
+  Serial.print(metersold);
+  Serial.print(" m; Height: ");
+  Serial.print(meters);
+  Serial.print(" Pressure: ");
+  Serial.print(pascal);
+  Serial.print(" Pa; T: ");
+  Serial.print(temperature);
+  Serial.println(" C");
 }
 
 void sinelon()
