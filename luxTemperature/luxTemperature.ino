@@ -1,41 +1,49 @@
 /*
    Required libraries:
-   
+
    - I2C-Sensor-Lib (iLib)
    - FastLed
 
   Used Hardware:
 
-  - Pro Mini Atmega328 3.3V 8M 
-    I2C - A4 (SDA), A5 (SCL)
+  - Pro Mini Atmega328 3.3V 8M  
+    A4 (I2C - SDA), 
+    A5 (I2C - SCL),
+    12 (Neopixel out)
 */
 
 #include <Wire.h>
 #include "i2c.h"
 #include "i2c_BMP280.h"
-BMP280 bmp280;
-
-
 #include "FastLED.h"
 
-
+BMP280 bmp280;
 
 FASTLED_USING_NAMESPACE
+
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001000)
 #warning "Requires FastLED 3.1 or later; check github for latest code."
 #endif
 
-#define DATA_PIN    12 //TODO change
+#define HIGH_TEMP_MAX 30
+#define NORM_TEMP_MAX 24
+#define LOW_TEMP_MAX 23
+#define LOW_TEMP_MIN 18
 
+#define DATA_PIN    12
 #define LED_TYPE    WS2812
 #define COLOR_ORDER RGB
 #define NUM_LEDS    12
-CRGB leds[NUM_LEDS];
-
 #define BRIGHTNESS          96
 #define FRAMES_PER_SECOND  120
 
+CRGB leds[NUM_LEDS];
 uint8_t gHue = 0;
+float temperature;
+float pascal;
+static float meters, metersold;
+
+
 
 void setup() {
   delay(2000);
@@ -59,36 +67,35 @@ void setup() {
 
 
 void loop() {
+  
   bmpTest();
 
+  if (temperature > NORM_TEMP_MAX &&
+      temperature < HIGH_TEMP_MAX)
+  {
+    highTempAnimation();
+  }
+  else if (temperature > LOW_TEMP_MAX &&
+           temperature < NORM_TEMP_MAX )
+  {
+    normTempAnimation();
+  } else if (temperature > LOW_TEMP_MIN &&
+             temperature < LOW_TEMP_MAX)
+  {
+    lowTempAnimation();
+  }
+  
   FastLED.show();
-  // insert a delay to keep the framerate modest
-  FastLED.delay(1000 / FRAMES_PER_SECOND);
-
-  // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) {
-    gHue++;  // slowly cycle the "base color" through the rainbow
-  }
-  EVERY_N_SECONDS( 10 ) {
-    sinelon();  // change patterns periodically
-  }
-
+  FastLED.delay(1000 / FRAMES_PER_SECOND); 
 }
 
 void bmpTest() {
 
   bmp280.awaitMeasurement();
-
-  float temperature;
   bmp280.getTemperature(temperature);
-
-  float pascal;
   bmp280.getPressure(pascal);
-
-  static float meters, metersold;
   bmp280.getAltitude(meters);
   metersold = (metersold * 10 + meters) / 11;
-
   bmp280.triggerMeasurement();
 
   Serial.print(" HeightPT1: ");
@@ -102,11 +109,26 @@ void bmpTest() {
   Serial.println(" C");
 }
 
-void sinelon()
-{
-  // a colored dot sweeping back and forth, with fading trails
+
+void highTempAnimation() {
+
   fadeToBlackBy( leds, NUM_LEDS, 20);
   int pos = beatsin16(13, 0, NUM_LEDS);
   leds[pos] += CHSV( gHue, 255, 192);
 }
+
+void normTempAnimation() {
+
+  fadeToBlackBy( leds, NUM_LEDS, 20);
+  int pos = beatsin16(13, 0, NUM_LEDS);
+  leds[pos] += CHSV( gHue, 255, 192);
+}
+void lowTempAnimation() {
+
+  fadeToBlackBy( leds, NUM_LEDS, 20);
+  int pos = beatsin16(13, 0, NUM_LEDS);
+  leds[pos] += CHSV( gHue, 255, 192);
+}
+
+
 
